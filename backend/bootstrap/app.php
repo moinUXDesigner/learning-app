@@ -3,14 +3,11 @@
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureUserBelongsToOrganization;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
-use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -25,22 +22,23 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         /*
-         * Sanctum's SPA cookie-session mode requires the actual session
-         * to be started (and cookies encrypted/queued, and CSRF
-         * validated) on API requests, not just the "mark this request as
-         * stateful" middleware — those three are normally only present in
-         * the `web` group. EnsureFrontendRequestsAreStateful only flags
-         * the request as eligible for cookie auth; without StartSession
-         * the session store is never attached to the request at all
-         * (Auth::attempt()/session()->regenerate() would throw
-         * "Session store not set on request."). So the api group needs
-         * this superset for stateful auth to function end-to-end.
+         * EnsureFrontendRequestsAreStateful is the ONLY thing needed here.
+         * For requests it recognizes as "from frontend" (matching
+         * SANCTUM_STATEFUL_DOMAINS), it internally runs its OWN nested
+         * pipeline of EncryptCookies -> AddQueuedCookiesToResponse ->
+         * StartSession -> ValidateCsrfToken before calling next(). Also
+         * prepending those same three classes here (as an earlier revision
+         * of this file did) made them run TWICE per request: the second
+         * EncryptCookies pass tried to decrypt a cookie value that the
+         * first pass had already decrypted, threw, and silently nulled the
+         * cookie out — so StartSession's second pass never found a valid
+         * incoming session ID and created a brand new session on every
+         * single request, permanently desyncing the CSRF token the client
+         * held from the one the (fresh) session expected. Do not re-add
+         * EncryptCookies/StartSession/ValidateCsrfToken here.
          */
         $middleware->api(prepend: [
             EnsureFrontendRequestsAreStateful::class,
-            EncryptCookies::class,
-            StartSession::class,
-            ValidateCsrfToken::class,
         ]);
 
         $middleware->alias([

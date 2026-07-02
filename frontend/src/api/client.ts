@@ -26,6 +26,13 @@ export const apiClient = axios.create({
   withCredentials: true,
   xsrfCookieName: 'XSRF-TOKEN',
   xsrfHeaderName: 'X-XSRF-TOKEN',
+  // axios only auto-attaches the XSRF header for requests it considers
+  // same-origin as the page. The frontend (e.g. localhost:3000/3001) and
+  // this API (localhost:8000) are different origins by port, so without this
+  // flag axios silently drops the header and every POST/PUT/DELETE fails
+  // with a Laravel "CSRF token mismatch" 419. Safe to force here because the
+  // token is only ever sent back to the same backend that issued it.
+  withXSRFToken: true,
 });
 
 // Normalize every rejected response into a typed ApiError so calling code

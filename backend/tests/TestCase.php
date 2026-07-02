@@ -9,6 +9,23 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 abstract class TestCase extends BaseTestCase
 {
     /**
+     * Sanctum's EnsureFrontendRequestsAreStateful only starts the session
+     * (making $request->session() available) for requests it recognizes as
+     * coming from the configured frontend, detected via the Origin/Referer
+     * header matching SANCTUM_STATEFUL_DOMAINS. The test client sends
+     * neither by default, so every test request needs this header to
+     * behave like a real SPA request would (otherwise controllers that
+     * call $request->session() directly, e.g. AuthController::login/
+     * register/logout, throw "Session store not set on request").
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withHeader('Origin', config('app.frontend_url', 'http://localhost:3000'));
+    }
+
+    /**
      * Create (via factory) and authenticate a user with the given role,
      * using the matching factory state, attached to $org if given or a
      * freshly-created organization otherwise.

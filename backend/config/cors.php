@@ -21,7 +21,13 @@ return [
 
     'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:3000')],
 
-    'allowed_origins_patterns' => [],
+    // Dev convenience: Vite auto-increments to the next free port (3001, 3002, ...)
+    // when 3000 is already taken (e.g. by the Docker frontend container), so accept
+    // any localhost/127.0.0.1 port in addition to the configured FRONTEND_URL.
+    'allowed_origins_patterns' => [
+        '#^http://localhost:\d+$#',
+        '#^http://127\.0\.0\.1:\d+$#',
+    ],
 
     'allowed_headers' => ['*'],
 
