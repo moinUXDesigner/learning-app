@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_STORE" value="array"/>
+        <!--
+            IMPORTANT: both env and server entries below are required, each
+            with force="true".
+
+            docker-compose.yml sets DB_CONNECTION/DB_HOST/DB_DATABASE/etc as
+            real container level OS environment variables for the backend
+            service, pointing at the real dev MySQL "learntrack" database.
+            PHP's CLI SAPI populates those into both getenv()/$_ENV and
+            $_SERVER at process start. Laravel's env() helper resolves values
+            via vlucas/phpdotenv's repository, whose adapter chain checks
+            $_SERVER first. PHPUnit's env force="true" only patches
+            putenv()/$_ENV, not $_SERVER, so $_SERVER['DB_CONNECTION']
+            (still "mysql" from Docker) won silently even with force="true"
+            on env alone.
+
+            This was found the hard way: the first "php artisan test" run
+            during this phase actually ran RefreshDatabase against the real
+            dev MySQL database and wiped all seeded demo data (users table
+            went from 14 rows to 0), because only the env force was set at
+            the time. Demo data was restored via a fresh migrate plus seed
+            run after this was diagnosed and fixed. Both env and server tags
+            with force="true" are required to reliably win over Docker's
+            container level env vars for the DB_* keys.
+        -->
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="DB_HOST" value="" force="true"/>
+        <env name="DB_PORT" value="" force="true"/>
+        <env name="DB_USERNAME" value="" force="true"/>
+        <env name="DB_PASSWORD" value="" force="true"/>
+        <server name="DB_CONNECTION" value="sqlite" force="true"/>
+        <server name="DB_DATABASE" value=":memory:" force="true"/>
+        <server name="DB_HOST" value="" force="true"/>
+        <server name="DB_PORT" value="" force="true"/>
+        <server name="DB_USERNAME" value="" force="true"/>
+        <server name="DB_PASSWORD" value="" force="true"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+    </php>
+</phpunit>

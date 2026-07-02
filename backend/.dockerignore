@@ -1,0 +1,6 @@
+public/storage
+storage/*.key
+.env
+.git
+.gitignore
+node_modules
