@@ -41,7 +41,8 @@ class AdminDashboardController extends Controller
         $courseStatusBreakdown = Course::query()
             ->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')
-            ->pluck('count', 'status');
+            ->pluck('count', 'status')
+            ->map(fn ($count) => (int) $count);
 
         // Active students: students who have submitted at least one task,
         // scoped to courses within this org (or globally for super_admin).

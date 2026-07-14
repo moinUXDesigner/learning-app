@@ -39,11 +39,21 @@ class TeacherDashboardController extends Controller
 
         // Student-wise progress summary: per student, count of completed
         // submissions and average score, across this teacher's courses.
+        // MySQL aggregate functions (COUNT/SUM/AVG) come back through PDO as
+        // strings, not native ints/floats, so selectRaw() rows need explicit
+        // casting before being returned as JSON — otherwise the frontend's
+        // `.toFixed()` calls on these fields throw at render time (they're
+        // typed as `number` on the TS side, matching the intended contract).
         $studentProgress = (clone $submissionsQuery())
             ->selectRaw('student_id, COUNT(*) as submission_count, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as completed_count, AVG(score) as average_score', [TaskStatus::Completed->value])
             ->groupBy('student_id')
             ->with('student:id,name,email')
-            ->get();
+            ->get()
+            ->each(function ($row) {
+                $row->submission_count = (int) $row->submission_count;
+                $row->completed_count = (int) $row->completed_count;
+                $row->average_score = $row->average_score !== null ? round((float) $row->average_score, 2) : null;
+            });
 
         // Course-wise completion: per course, total tasks submitted vs
         // completed.
@@ -63,7 +73,11 @@ class TeacherDashboardController extends Controller
             ->join('daily_tasks', 'task_submissions.daily_task_id', '=', 'daily_tasks.id')
             ->selectRaw('daily_tasks.course_id, COUNT(*) as submission_count, SUM(CASE WHEN task_submissions.status = ? THEN 1 ELSE 0 END) as completed_count', [TaskStatus::Completed->value])
             ->groupBy('daily_tasks.course_id')
-            ->get();
+            ->get()
+            ->each(function ($row) {
+                $row->submission_count = (int) $row->submission_count;
+                $row->completed_count = (int) $row->completed_count;
+            });
 
         $coursesById = Course::query()
             ->whereIn('id', $courseCompletion->pluck('course_id'))
